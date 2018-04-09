@@ -8,7 +8,7 @@ library(tidyverse)
 AllStreams <- read.csv("HB_AllStreamsCorr.csv")
 str(AllStreams)
 #--------------------------------------------------------------------------------------
-##Get rid of redundant columns
+##Clean up data
 #--------------------------------------------------------------------------------------
 #get rid of log transformed variables
 AllStreamsCorr <- select(AllStreams, -starts_with("ln"))%>%
@@ -16,4 +16,5 @@ AllStreamsCorr <- select(AllStreams, -starts_with("ln"))%>%
   select(-ends_with("Corr"))%>%
   select(-starts_with("Raw"))%>%
   select(-streamcode,reachcode)%>%
-  select(id,O.N,Sex,Photo,Year,Month,Day,Species,stage,stream,reach,meso,latloc,longloc,subsize)
+  select(id,O.N,Sex,Photo,Year,Month,Day,Species,stage,stream,reach,meso,latloc,longloc,subsize)%>%
+  
