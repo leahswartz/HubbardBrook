@@ -9,6 +9,7 @@ AllStreams <- read.csv("All_Streams_Corr.csv")
 str(AllStreams)
 #-----------------------------------------------------------------------------------------
 ##Clean up data
+
 #-----------------------------------------------------------------------------------------
 #Clean data = AllStreamsCorr
 AllStreamsCorr <- AllStreams %>%
@@ -27,7 +28,7 @@ AllStreamsCorr <- AllStreams %>%
 #All variables capitalized
     rename(ID=id,OldNew=O.N, SurNum=surnum,Stage=stage, Stream=stream, Reach=reach, 
            Meso=meso,LatLoc =latloc,LongLoc=longloc, SubSize=subsize, Metamorph=meta,
-           PhotoSVL=svl,MassMg=mass,HeadLength=hl,HeadWidth=hw,TailLength=tl,TailWidth=tw,
+           PhotoSVL=svl,MassMg=mass,HeadLength=hl,HeadWidth=hw,TrunkLength=tl,TrunkWidth=tw,
            TailRemoved=tailrm,TailRegrown=tailrg,HumerousLength=hul,FemurLength=fel,
            SubType=Type)%>%
 #fix sex column
@@ -39,8 +40,14 @@ AllStreamsCorr <- AllStreams %>%
 #drop unused factor levels
     droplevels()%>%
 #replace all XXX and blanks with NA
+  mutate(SurNum=replace(SurNum, SurNum=="XXX",NA))%>%
+  mutate(SurNum=replace(SurNum, SurNum=="",NA))%>%
   mutate(Meso=replace(Meso, Meso=="XXX",NA))%>%
   mutate(Meso=replace(Meso, Meso=="",NA))%>%
+  mutate(SubSize=replace(SubSize, SubSize=="XXX",NA))%>%
+  mutate(SubSize=replace(SubSize, SubSize=="",NA))%>%
+  mutate(SubType=replace(SubType, SubType=="XXX",NA))%>%
+  mutate(SubType=replace(SubType, SubType=="",NA))%>%
   mutate(LatLoc=replace(LatLoc, LatLoc=="XXX",NA))%>%
   mutate(LatLoc=replace(LatLoc, LatLoc=="",NA))%>%
   mutate(LongLoc=replace(LongLoc, LongLoc=="XXX",NA))%>%
@@ -55,10 +62,10 @@ AllStreamsCorr <- AllStreams %>%
   mutate(HeadLength=replace(HeadLength, HeadLength=="",NA))%>%
   mutate(HeadWidth=replace(HeadWidth, HeadWidth=="XXX",NA))%>%
   mutate(HeadWidth=replace(HeadWidth, HeadWidth=="",NA))%>%
-  mutate(TailLength=replace(TailLength, TailLength=="XXX",NA))%>%
-  mutate(TailLength=replace(TailLength, TailLength=="",NA))%>%
-  mutate(TailWidth=replace(TailWidth, TailWidth=="XXX",NA))%>%
-  mutate(TailWidth=replace(TailWidth, TailWidth=="",NA))%>%
+  mutate(TrunkLength=replace(TrunkLength, TrunkLength=="XXX",NA))%>%
+  mutate(TrunkLength=replace(TrunkLength, TrunkLength=="",NA))%>%
+  mutate(TrunkWidth=replace(TrunkWidth, TrunkWidth=="XXX",NA))%>%
+  mutate(TrunkWidth=replace(TrunkWidth, TrunkWidth=="",NA))%>%
   mutate(TailRemoved=replace(TailRemoved, TailRemoved=="XXX",NA))%>%
   mutate(TailRemoved=replace(TailRemoved, TailRemoved=="",NA))%>%
   mutate(TailRegrown=replace(TailRegrown, TailRegrown=="XXX",NA))%>%
@@ -66,41 +73,34 @@ AllStreamsCorr <- AllStreams %>%
   mutate(HumerousLength=replace(HumerousLength, HumerousLength=="XXX",NA))%>%
   mutate(HumerousLength=replace(HumerousLength, HumerousLength=="",NA))%>%
   mutate(FemurLength=replace(FemurLength, FemurLength=="XXX",NA))%>%
-  mutate(FemurLength=replace(FemurLength, FemurLength=="",NA))
-  
-
-  
-  
-  
-  
-  
-  
-  
-   recode(AllStreamsCorr$FemurLength,XXX=NA)
-  
-    lapply(FUN = function(x) recode(x, "XXX"=NA))
-#replace all blanks with NA
-
-#fix data types
-    mutate_at(vars(PhotoSVL:FemurLength),funs(character)
-
-
-:FemurLength)
-    mutate_at(PhotoSVL:FemurLength=as.numeric(PhotoSVL:FemurLength))
-  
-
+  mutate(FemurLength=replace(FemurLength, FemurLength=="",NA))%>%
+  ##add column for primary occasion
+  mutate(Primary=ifelse(SurNum==1|SurNum==2|SurNum==3,1,
+                   ifelse(SurNum==4|SurNum==5|SurNum==6,2,
+                     ifelse(SurNum==7|SurNum==8|SurNum==9,3,
+                       ifelse(SurNum==10|SurNum==11|SurNum==12,4,
+                         ifelse(SurNum==13|SurNum==14|SurNum==15,5,
+                           ifelse(SurNum==16|SurNum==17|SurNum==18,6,
+                             ifelse(SurNum==19|SurNum==20|SurNum==21,7,
+                               ifelse(SurNum==22|SurNum==23|SurNum==24,8,
+                                 ifelse(SurNum==25|SurNum==26|SurNum==27,9,
+                                   ifelse(SurNum==28|SurNum==29,10,
+                                     ifelse(SurNum==30|SurNum==31|SurNum==32,11,
+                                       ifelse(SurNum==33|SurNum==34|SurNum==35|SurNum==36,12,NA)))))))))))))%>%
+  ##add date column - first change months to numeric
+  mutate(month=ifelse(Month=="Jun",6,
+                        ifelse(Month=="Jul",7,
+                               ifelse(Month=="Aug",8,
+                                      ifelse(Month=="Sep",9,NA)))))%>%
+  rename(year=Year,day=Day)%>%
+  mutate(Date=make_date(year,month,day))
 
 
-    mutate(replace(AllStreamsCorr,Sex==f?,NA))  
-
-
-
-  lapply(AllStreamsCorr$Sex, recode(AllStreamsCorr$Sex,f?=NA))
-#Replace XXX with NA\
-    lapply(FUN = function(x) recode(x, XXX=NA))
+write.csv(AllStreamsCorr,file="AllStreamsCorrClean.csv") 
   
   
-str(AllStreamsCorr)
-summary(AllStreamsCorr$Sex)
-AllStreamsCorr$Photo
+  
+  
+  
+  
 
