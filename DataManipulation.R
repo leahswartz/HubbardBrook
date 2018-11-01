@@ -1,33 +1,64 @@
-#-----------------------------------------------------------------------------------------
-##Load Packages
-#-----------------------------------------------------------------------------------------
-library(tidyverse)
-#-----------------------------------------------------------------------------------------
-##Bring in data
-#-----------------------------------------------------------------------------------------
-AllStreams <- read.csv("All_Streams_Corr.csv")
-str(AllStreams)
-#-----------------------------------------------------------------------------------------
-##Clean up data
+#---------------------------------------------------------------------------------------------
+##Salamander Data Wrangling - Leah Swartz 2018
+#---------------------------------------------------------------------------------------------
 
-#-----------------------------------------------------------------------------------------
+##Goal - create dataframe of Hubbard Brook salamander mark recapture data 
+##with all streams, all species, all years. Link to survey covariates for 
+##all streams all years
+
+##R Studio project - working directory = Hubbard Brook Leah
+
+#---------------------------------------------------------------------------------------------
+##To Do: 
+#---------------------------------------------------------------------------------------------
+
+#   1. Add survey covariates for all of Jon's data, link to 
+#   2.
+#   3.
+#   4. 
+#   5. 
+#   6. 
+#   7. 
+
+#---------------------------------------------------------------------------------------------
+##Load Packages
+#---------------------------------------------------------------------------------------------
+
+library(tidyverse) ## includes ggplot2, tibble, tidyr, readr, purr, dplyr, stringr, forcats
+
+#---------------------------------------------------------------------------------------------
+##Bring in data
+#---------------------------------------------------------------------------------------------
+AllStreams <- read_csv("All_Streams_Corr.csv")
+AllStreams2018 <- read_csv("2018SalamanderCaptureDataFinal.csv")
+##Deal with wierd formatting in ID columns
+AllStreams2018$Last3Digits<-formatC(AllStreams2018$Last3Digits, width = 3, format = "d", flag = "0")
+AllStreams2018$ID<- formatC(AllStreams2018$ID, width = 12, format = "s")
+str(AllStreams)
+str(AllStreams2018)
+#---------------------------------------------------------------------------------------------
+##Clean up 2012-2015 data
+#---------------------------------------------------------------------------------------------
+
 #Clean data = AllStreamsCorr
 AllStreamsCorr <- AllStreams %>%
 #get rid of log transformed variables
     select(-starts_with("ln"))%>%
-#get rid of redundant morphology columns
+#get rid of redundant morphology columns but keep raw long loc and corr long loc and raw lat loc
+  ##rename raw long loc and corr long loc
+    rename(LongLocRaw = Raw.LongLoc, CorrLongLoc = longloc, LatLocRaw=Raw.LatLoc)%>%
     select(-ends_with("Corr"))%>%
     select(-starts_with("Raw"))%>%
 #get rid of reduntant numeric columns
     select(-streamcode,reachcode)%>%
 #reorder columns in a way that makes sense
     select(id,O.N,Species,Sex,Photo,Year,Month,Day,surnum,Species,
-           stage,stream,reach,meso,latloc,longloc,subsize,Type,meta,
+           stage,stream,reach,meso,LatLocRaw,LongLocRaw,CorrLongLoc, subsize,Type,meta,
            svl,mass,hl,hw,tl,tw,tailrm,tailrg,hul,fel,Notes)%>%
 #rename everything so column names are interpretable 
 #All variables capitalized
-    rename(ID=id,OldNew=O.N, SurNum=surnum,Stage=stage, Stream=stream, Reach=reach, 
-           Meso=meso,LatLoc =latloc,LongLoc=longloc, SubSize=subsize, Metamorph=meta,
+    rename(ElastomerID=id,OldNew=O.N, SurNum=surnum,Stage=stage, Stream=stream, Reach=reach, 
+           Meso=meso,LatLoc =LatLocRaw,RawLongLoc=LongLocRaw, SubSize=subsize, Metamorph=meta,
            PhotoSVL=svl,MassMg=mass,HeadLength=hl,HeadWidth=hw,TrunkLength=tl,TrunkWidth=tw,
            TailRemoved=tailrm,TailRegrown=tailrg,HumerousLength=hul,FemurLength=fel,
            SubType=Type)%>%
@@ -50,8 +81,10 @@ AllStreamsCorr <- AllStreams %>%
   mutate(SubType=replace(SubType, SubType=="",NA))%>%
   mutate(LatLoc=replace(LatLoc, LatLoc=="XXX",NA))%>%
   mutate(LatLoc=replace(LatLoc, LatLoc=="",NA))%>%
-  mutate(LongLoc=replace(LongLoc, LongLoc=="XXX",NA))%>%
-  mutate(LongLoc=replace(LongLoc, LongLoc=="",NA))%>%
+  mutate(RawLongLoc=replace(RawLongLoc, RawLongLoc=="XXX",NA))%>%
+  mutate(RawLongLoc=replace(RawLongLoc, RawLongLoc=="",NA))%>%
+  mutate(CorrLongLoc=replace(CorrLongLoc, CorrLongLoc=="XXX",NA))%>%
+  mutate(CorrLongLoc=replace(CorrLongLoc, CorrLongLoc=="",NA))%>%
   mutate(Photo=replace(Photo, Photo=="XXX",NA))%>%
   mutate(Photo=replace(Photo, Photo=="",NA))%>%
   mutate(PhotoSVL=replace(PhotoSVL, PhotoSVL=="XXX",NA))%>%
@@ -88,19 +121,109 @@ AllStreamsCorr <- AllStreams %>%
                                      ifelse(SurNum==30|SurNum==31|SurNum==32,11,
                                        ifelse(SurNum==33|SurNum==34|SurNum==35|SurNum==36,12,NA)))))))))))))%>%
   ##add date column - first change months to numeric
-  mutate(month=ifelse(Month=="Jun",6,
+  mutate(Month=ifelse(Month=="Jun",6,
                         ifelse(Month=="Jul",7,
                                ifelse(Month=="Aug",8,
                                       ifelse(Month=="Sep",9,NA)))))%>%
-  rename(year=Year,day=Day)%>%
-  mutate(Date=make_date(year,month,day))
+  #rename(year=Year,day=Day)%>%
+  mutate(Date=lubridate::make_date(Year,Month,Day))
+
+#---------------------------------------------------------------------------------------------
+##Clean up 2018 data
+#---------------------------------------------------------------------------------------------
+#AllStreams2018$Last3Digits<-formatC(AllStreams2018$Last3Digits, width = 3, format = "d", flag = "0")
+#AllStreams2018$ID<- formatC(AllStreams2018$ID, width = 12, format = "s")
 
 
-write.csv(AllStreamsCorr,file="AllStreamsCorrClean.csv") 
+AllStreams2018Corr <- AllStreams2018 %>%
+##Merge ID and Last3Digits
+##first change NA to "" in one column
+  replace_na(list(Last3Digits = ""))%>%
+##Now unite columns while dropping old (remove=T)
+  unite(PitTagID, ID, Last3Digits,sep = "", remove=T)%>%
+  mutate(PitTagID=replace(PitTagID, PitTagID=="NA",NA))%>%
+##add interreach distance to CorrLongLoc
+  mutate(CorrLongLoc=ifelse(Stream=="Paradise" & "Reach"=="upper",LongLoc+750,
+                           ifelse(Stream=="Bear"& "Reach"=="upper",LongLoc+900,
+                                  ifelse(Stream=="ZigZag" & Reach=="upper",LongLoc+1000, LongLoc))))%>% 
+##rename columns to match others
+  rename(OldNew=ON,Day=day,LatLocRaw=LatLoc,RawLongLoc=LongLoc)%>%
+##change survey number to match up with previous years - add 36 to everything
+  mutate(SurNum=SurNum+36)%>%
+##add primary column
+  mutate(Primary=ifelse(SurNum==37|SurNum==38|SurNum==39,13,
+                      ifelse(SurNum==40|SurNum==41|SurNum==42,14,
+                             ifelse(SurNum==43|SurNum==44|SurNum==45,15,NA))))%>%
+##FOR NOW: Filter out everything but tagged gyrinopholus
+  filter(Species=="GP")%>%
+  mutate(PitTagID=replace(PitTagID, PitTagID=="999002018052",NA))%>%
+  drop_na(PitTagID)%>%
+  #filter(%>%
+  select(-c(X39,X40))
+
+
+    
+                                    
+
+#write.csv(AllStreamsCorr,file="AllStreamsCorrClean.csv") 
+
+
+
   
+#---------------------------------------------------------------------------------------------
+##Merge 2018 data with previous years
+#---------------------------------------------------------------------------------------------
+AllStreamsAllYears<- bind_rows(mutate_all(AllStreamsCorr, as.character), mutate_all(AllStreams2018Corr, as.character))
+#write.csv(AllStreamsAllYears,file="AllStreamsAllYears.csv") 
+
+#---------------------------------------------------------------------------------------------
+##Create data for Hugo
+#---------------------------------------------------------------------------------------------
+CaptureHistories <- AllStreamsAllYears %>% 
+  #mutate(PitTagID=as.factor(PitTagID))%>% 
+##Make new column for elastomerID_PittagID
+  group_by(ElastomerID,PitTagID)%>%
   
+
+  ## colapse so only one obs per primary period - if individual was recaptured 
+  ## within the same primary period use 1st measurements
+  distinct(ID,Primary,.keep_all=TRUE)%>%
+  select(ID,Sex,Primary)%>%
+  #mutate(Meso=ifelse(Meso=="RF",1,
+  #   ifelse(Meso=="PL",2,0)))%>%
+  ## spread by primary
+  spread(Primary,Meso)
+##replace NA with zero
+CaptureHistories[is.na(CaptureHistories)] <- 0  
+
+
+
+
+
+CaptureHistories <- as.data.frame(AllStreamsCorr) %>% 
+  ## filter - 3 streams - zigzag, bear,paradise
+  #filter(Stream=="Bear"|Stream=="Paradise"|Stream=="Zig Zag")%>%
+  ## filter - downstream reaches
+  #filter(Reach=="lower")%>%
+  ## filter species = GP
+  #filter(Species=="GP")%>%
+  ## colapse so only one obs per primary period - if individual was recaptured 
+  ## within the same primary period use 1st measurements
+  distinct(ID,Primary,.keep_all=TRUE)%>%
+  select(ID,Sex,Primary)%>%
+  #mutate(Meso=ifelse(Meso=="RF",1,
+                  #   ifelse(Meso=="PL",2,0)))%>%
+  ## spread by primary
+  spread(Primary,Meso)
+##replace NA with zero
+CaptureHistories[is.na(CaptureHistories)] <- 0  
   
-  
-  
+##reproducible example
+Data <- data.frame(
+  PitTagID = as.character(sample(1:20,10)),
+  ElastomerID = as.character(sample(30:50,10)),
+  SurNum = as.character(sample(1:20,10)),
+  Stage= as.factor(sample(c("Larvae", "Adult"), 10, replace = TRUE)), 
+  Sex =as.factor(sample(c("Male", "Female"), 10, replace = TRUE)))  
   
 
