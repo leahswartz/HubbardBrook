@@ -12,36 +12,44 @@
 ##To Do: 
 #---------------------------------------------------------------------------------------------
 
-#   1. Add survey covariates for all of Jon's data, link to 
-#   2.
-#   3.
-#   4. 
-#   5. 
+#   1. Enter survey covariates for all of Jon's data 
+#   2. Create CSV with all survey covariates all years
+#   3. Merge 2019 data
+#   4. Fix 2018 CorrLongLoc
+#   5. Genomics Project - List of salamanders to sequence. 
+#
+#
 #   6. 
 #   7. 
 
 #---------------------------------------------------------------------------------------------
+##Set Working Directory
+#---------------------------------------------------------------------------------------------
+setwd("C:/Users/Leah Swartz/Box Sync/Box Sync/HubbardBrookLeah/CMRWorkingDirectory")
+#---------------------------------------------------------------------------------------------
 ##Load Packages
 #---------------------------------------------------------------------------------------------
-
 library(tidyverse) ## includes ggplot2, tibble, tidyr, readr, purr, dplyr, stringr, forcats
-
 #---------------------------------------------------------------------------------------------
 ##Bring in data
 #---------------------------------------------------------------------------------------------
-AllStreams <- read_csv("All_Streams_Corr.csv")
-AllStreams2018 <- read_csv("2018SalamanderCaptureDataFinal.csv")
-##Deal with wierd formatting in ID columns
-AllStreams2018$Last3Digits<-formatC(AllStreams2018$Last3Digits, width = 3, format = "d", flag = "0")
-AllStreams2018$ID<- formatC(AllStreams2018$ID, width = 12, format = "s")
-str(AllStreams)
+##2012 - 2015 data
+AllStreams2012_2015 <- read_csv("All_Streams_Corr.csv")
+##2018 data
+AllStreams2018 <- read_csv("2018SalamanderCaptureDataFinal_IDFixed.csv")
+##2019 data
+AllStreams2019 <- read_csv("2019_salamander_CMR_data_withmeasurements_IDFixed.csv")
+##Already genotyped individuals
+AlreadyGenotyped <- read.csv("AlreadyGenotypedGP.csv")
+##Look at structure
+str(AllStreams2012_2015)
 str(AllStreams2018)
+str(AllStreams2019)
 #---------------------------------------------------------------------------------------------
 ##Clean up 2012-2015 data
 #---------------------------------------------------------------------------------------------
-
 #Clean data = AllStreamsCorr
-AllStreamsCorr <- AllStreams %>%
+AllStreamsCorr2012_2015 <- AllStreams2012_2015 %>%
   #get rid of log transformed variables
   select(-starts_with("ln"))%>%
   #get rid of redundant morphology columns but keep raw long loc and corr long loc and raw lat loc
@@ -131,25 +139,13 @@ AllStreamsCorr <- AllStreams %>%
 #---------------------------------------------------------------------------------------------
 ##Clean up 2018 data
 #---------------------------------------------------------------------------------------------
-#AllStreams2018$Last3Digits<-formatC(AllStreams2018$Last3Digits, width = 3, format = "d", flag = "0")
-#AllStreams2018$ID<- formatC(AllStreams2018$ID, width = 12, format = "s")
-
-
 AllStreams2018Corr <- AllStreams2018 %>%
-  ##Merge ID and Last3Digits
-  ##first change NA to "" in one column
-  # replace_na(list(Last3Digits = ""))%>%
-  ##Now unite columns while dropping old (remove=T)
-  #mutate(PitTagID = replace(ID, ID=="          NA",NA))%>%
-  #mutate(PitTagID = replace(PitTagID, PitTagID==" 9.99002e+11",999002018052))%>%
-  #mutate(PitTagID = replace(PitTagID, PitTagID=="    9.99e+11",999002018052))%>%
-  #unite(PitTagID, Last3Digits)%>%
   ##add interreach distance to CorrLongLoc
-  mutate(CorrLongLoc=ifelse(Stream=="Paradise" & "Reach"=="upper",LongLoc+750,
-                            ifelse(Stream=="Bear"& "Reach"=="upper",LongLoc+900,
+  mutate(CorrLongLoc=ifelse(Stream=="Paradise" & Reach=="upper",LongLoc+750,
+                            ifelse(Stream=="Bear"& Reach=="upper",LongLoc+900,
                                    ifelse(Stream=="ZigZag" & Reach=="upper",LongLoc+1000, LongLoc))))%>% 
   ##rename columns to match others
-  rename(OldNew=ON,Day=day,LatLocRaw=LatLoc,RawLongLoc=LongLoc)%>%
+  rename(OldNew=ON,LatLocRaw=LatLoc,RawLongLoc=LongLoc)%>%
   ##change survey number to match up with previous years - add 36 to everything
   mutate(SurNum=SurNum+36)%>%
   ##change mass from g to mg
@@ -162,12 +158,33 @@ AllStreams2018Corr <- AllStreams2018 %>%
   filter(Species=="GP")%>%
   mutate(PitTagID=replace(PitTagID, PitTagID=="999002018052",NA))%>%
   drop_na(PitTagID)#%>%
-#filter(%>%
-#select(-c(X39,X40))
-
 
 #write.csv(AllStreamsCorr,file="AllStreamsCorrClean.csv") 
 
+#---------------------------------------------------------------------------------------------
+##Clean up 2019 data
+#---------------------------------------------------------------------------------------------
+AllStreams2019Corr <- AllStreams2019  
+##add interreach distance to CorrLongLoc
+mutate(CorrLongLoc=ifelse(Stream=="Paradise" & Reach=="upper",LongLoc+750,
+                          ifelse(Stream=="Bear"& Reach=="upper",LongLoc+900,
+                                 ifelse(Stream=="ZigZag" & Reach=="upper",LongLoc+1000, LongLoc))))%>%
+  ##rename columns to match others
+  rename(OldNew=ON,LatLocRaw=LatLoc,RawLongLoc=LongLoc)%>%
+  ##change survey number to match up with previous years - add 36 to everything
+  mutate(SurNum=SurNum+45)%>%
+  ##change mass from g to mg
+  mutate(MassMg=MassMg*1000)%>%
+  ##add primary column
+  mutate(Primary=ifelse(SurNum==46|SurNum==47|SurNum==48,16,
+                        ifelse(SurNum==49|SurNum==50|SurNum==51,17,
+                               ifelse(SurNum==52|SurNum==53|SurNum==54,18,NA))))%>%
+  ##FOR NOW: Filter out everything but tagged gyrinopholus
+  filter(Species=="GP")%>%
+  mutate(PitTagID=replace(PitTagID, PitTagID=="999002018052",NA))%>%
+  drop_na(PitTagID)#%>%
+
+#write.csv(AllStreamsCorr,file="AllStreamsCorrClean.csv") 
 #---------------------------------------------------------------------------------------------
 ##Merge 2018 data with previous years
 #---------------------------------------------------------------------------------------------
@@ -177,6 +194,27 @@ AllStreamsAllYears<- bind_rows(mutate_all(AllStreamsCorr, as.character), mutate_
   
   
   #write.csv(AllStreamsAllYears,file="AllStreamsAllYears.csv") 
+  
+  
+  
+  
+  
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   #---------------------------------------------------------------------------------------------
 ##Create data for Mary
 #---------------------------------------------------------------------------------------------
